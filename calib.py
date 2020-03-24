@@ -2,10 +2,15 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
 import numpy as np
+from glob import glob
+from tqdm import tqdm
 import cv2
 import sys
 
 def main():
+    images = glob(sys.argv[1] + '/*.jpg')
+    print("images:", len(images))
+
     # termination criteria
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
@@ -18,48 +23,85 @@ def main():
     imgpoints = [] # 2d points in image plane.
 
 
-    cap = cv2.VideoCapture(sys.argv[1])
+    if len(images)>0:
 
-    while(True):
-        # Capture frame-by-frame
-        ret = False
-        for i in range(1):
-            ret, frame = cap.read()
-        if ret is False:
-            break
+        if(len(images)>500):
+            images = images[::5]
+        print("images:", len(images))
 
-        img = frame
-        gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+        for fname in tqdm(images):
+            img = cv2.imread(fname)
+            gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
 
-        # Find the chess board corners
-        ret, corners = cv2.findChessboardCorners(gray, (9,6),None)
+            # Find the chess board corners
+            ret, corners = cv2.findChessboardCorners(gray, (9,6),None)
 
-        # If found, add object points, image points (after refining them)
-        if ret == True:
-            objpoints.append(objp)
+            # If found, add object points, image points (after refining them)
+            if ret == True:
+                objpoints.append(objp)
 
-            corners2 = cv2.cornerSubPix(gray,corners,(11,11),(-1,-1),criteria)
-            imgpoints.append(corners2)
+                corners2 = cv2.cornerSubPix(gray,corners,(11,11),(-1,-1),criteria)
+                imgpoints.append(corners2)
 
-            # Draw and display the corners
-            img = cv2.drawChessboardCorners(img, (9,6), corners2,ret)
-            chess=cv2.resize(img,(0,0),fx=0.5,fy=0.5)
-            cv2.imshow('chess',chess)
-            cv2.waitKey(1)
+                # Draw and display the corners
+                img = cv2.drawChessboardCorners(img, (9,6), corners2,ret)
+                chess=cv2.resize(img,(0,0),fx=0.5,fy=0.5)
+                cv2.imshow('chess',chess)
+                cv2.waitKey(1)
+    else:
+        cap = cv2.VideoCapture(sys.argv[1])
 
-    # When everything done, release the capture
-    cap.release()
+        while(True):
+            # Capture frame-by-frame
+            ret = False
+            for i in range(1):
+                ret, frame = cap.read()
+            if ret is False:
+                break
+
+            img = frame
+            gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+
+            # Find the chess board corners
+            ret, corners = cv2.findChessboardCorners(gray, (9,6),None)
+
+            # If found, add object points, image points (after refining them)
+            if ret == True:
+                objpoints.append(objp)
+
+                corners2 = cv2.cornerSubPix(gray,corners,(11,11),(-1,-1),criteria)
+                imgpoints.append(corners2)
+
+                # Draw and display the corners
+                img = cv2.drawChessboardCorners(img, (9,6), corners2,ret)
+                chess=cv2.resize(img,(0,0),fx=0.5,fy=0.5)
+                cv2.imshow('chess',chess)
+                cv2.waitKey(1)
+
+        # When everything done, release the capture
+        cap.release()
     cv2.destroyAllWindows()
+    print("Run calibrateCamera:")
     ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1],None,None)
 
     np.save('mtx.npy',mtx)
     np.save('dist.npy',dist)
 
-    print (mtx)
+    print('ret')
+    print(ret)
+    print('mtx')
+    print(mtx)
+    print('dist')
+    print(dist)
+    print('rvecs')
+    print(rvecs)
+    print('tvecs')
+    print(tvecs)
 
 if __name__ == "__main__":
     if len(sys.argv) !=2:
-        print("One argument - path to video file")
+        print("One argument - path to video file     OR    path to directory with .jpg images")
         print(sys.argv[0],'video.mp4')
+
         exit(1)
     main()
