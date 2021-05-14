@@ -16,6 +16,10 @@ import os
 mtx = np.load('mtx.npy')
 dist = np.load('dist.npy')
 
+mapx = None
+mapy = None
+newcameramtx = None
+
 print('mtx:',mtx)
 print('dist:',dist)
 
@@ -28,6 +32,18 @@ def mkdir_p(path):
             pass
         else:
             raise
+
+def convert_image(img, mtx, dist):
+    global mapx,mapy,newcameramtx
+    # dst = cv2.undistort(img, mtx, dist, None, newcameramtx)
+
+    if mapx is None:
+        h,  w = img.shape[:2]
+        newcameramtx, roi=cv2.getOptimalNewCameraMatrix(mtx,dist,(w,h),1,(w,h))
+        mapx, mapy = cv2.initUndistortRectifyMap(mtx, dist, None, newcameramtx, (img.shape[1], img.shape[0]), 5)
+        print(newcameramtx)
+    dst = cv2.remap(img, mapx, mapy, cv2.INTER_LINEAR)
+    return dst
 
 def convert(input_video, output_video):
     cap = cv2.VideoCapture(input_video)
@@ -85,10 +101,12 @@ def convert(input_video, output_video):
     cv2.destroyAllWindows()
 
 if __name__ == "__main__":
-    if len(sys.argv) !=3 and len(sys.argv) !=4:
+    if len(sys.argv) !=3 and len(sys.argv) !=4 and len(sys.argv) !=5:
         print("Usage:\n\t%s  input.mp4  output.mp4"%sys.argv[0])
         print("OR")
         print("Usage:\n\t%s  dir  input_dir  output_dir"%sys.argv[0])
+        print("OR")
+        print("Usage:\n\t%s  dir  jpg  input_dir  output_dir"%sys.argv[0])
         exit(-1)
     if len(sys.argv) == 3:
         print("Undistorting video %s => %s"%(sys.argv[1],sys.argv[2]))
@@ -102,3 +120,15 @@ if __name__ == "__main__":
             # print("Undistorting video %s => %s"%(fname,output))
             if not Path(output).exists():
                 convert(fname, output)
+    if len(sys.argv) == 5:
+        images = glob(sys.argv[3]+'/*.jpg')
+        for fname in tqdm(images):
+            img = cv2.imread(fname)
+            converted = convert_image(img, mtx, dist)
+            fnameout = sys.argv[4] + '/' + fname.split('/')[-1]
+            # print(fnameout)
+            cv2.imwrite(fnameout, converted)
+    print('mtx')
+    print(mtx)
+    print('newcameramtx')
+    print(newcameramtx)
